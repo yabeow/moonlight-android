@@ -51,7 +51,7 @@
             seekbar:step="500" />
 
         <ListPreference
-            android:defaultValue="latency"
+            android:defaultValue="warp"
             android:entries="@array/video_frame_pacing_names"
             android:entryValues="@array/video_frame_pacing_values"
             android:key="frame_pacing"
@@ -190,7 +190,7 @@
             seekbar:step="1"
             app:iconSpaceReserved="false" />
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="checkbox_enable_hdr"
             android:summary="@string/summary_enable_hdr"
             android:title="@string/title_enable_hdr"
@@ -279,7 +279,7 @@
             android:key="checkbox_fastVsync"
             android:title="@string/fastVsync_title"
             android:summary="@string/fastVsync_summary"
-            android:defaultValue="false"
+            android:defaultValue="true"
             app:iconSpaceReserved="false" />
 
         <CheckBoxPreference
@@ -351,7 +351,7 @@
                 android:key="pref_cpu_warmup_boost"
                 android:title="@string/pref_cpu_warmup_boost_title"
                 android:summary="@string/pref_cpu_warmup_boost_summary"
-                android:defaultValue="off"
+                android:defaultValue="medium"
                 android:entries="@array/pref_cpu_warmup_boost_entries"
                 android:entryValues="@array/pref_cpu_warmup_boost_values"
                 app:iconSpaceReserved="false" />
@@ -372,7 +372,7 @@
                 android:key="pref_cpu_warmup_core_set"
                 android:title="@string/pref_cpu_warmup_core_set_title"
                 android:summary="@string/pref_cpu_warmup_core_set_summary"
-                android:defaultValue="all"
+                android:defaultValue="big"
                 android:entries="@array/pref_cpu_warmup_core_set_entries"
                 android:entryValues="@array/pref_cpu_warmup_core_set_values"
                 app:iconSpaceReserved="false" />
@@ -1137,7 +1137,7 @@
         app:initialExpandedChildrenCount="1"
         app:iconSpaceReserved="false">
         <ListPreference
-            android:defaultValue="auto"
+            android:defaultValue="forceh265"
             android:entries="@array/video_format_names"
             android:entryValues="@array/video_format_values"
             android:key="video_format"
@@ -1157,13 +1157,13 @@
             android:title="@string/title_checkbox_reduce_refresh_rate"
             app:iconSpaceReserved="false" />
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="checkbox_full_range"
             android:summary="@string/summary_full_range"
             android:title="@string/title_full_range"
             app:iconSpaceReserved="false" />
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="checkbox_prevent_packet_loss"
             android:summary="@string/summary_prevent_packet_loss"
             android:title="@string/title_prevent_packet_loss"

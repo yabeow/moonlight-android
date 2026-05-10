@@ -20,18 +20,23 @@ These reduce latency at zero or negligible quality cost. Apply all of them.
 
 ### App settings
 
-| Setting (preference) | Value | Why |
-|---|---|---|
-| **Frame pacing** (`framePacing`) | `warp` (or `warp2`) | Tightest output gating; uses NanoPacer's spin/park to deliver frames within 2–100 µs of the display deadline. Better than the older "Lowest Latency / LFR" path. |
-| **Fast vsync** (`fastVsync`) | ON | Activates NanoPacer. Has no effect unless the pacing mode is one of WARP / WARP2 / MIN_LATENCY / GPU_RAW. |
-| **CPU boost / warmup** (`cpuWarmUpEnable`) | ON, profile **MEDIUM**, **BIG cores only**, **4 workers** | Pre-scales DVFS so frame-1 latency is stable and burst-decode dips don't cause the SoC to ramp from idle. Has a thermal gate built in. |
-| **Async decoder** (`asyncDecodeEnabled`) | ON (default) | MediaCodec async-callback mode. Eliminates `dequeueInputBuffer`/`dequeueOutputBuffer` polling latency. Verified default-on for API 23+. |
-| **Prevent packet loss** (`preventPacketLoss`) | ON | Tiny FEC/jitter guard on the receive path. Effectively free at <1 ms RTT. |
-| **Big-core affinity** (`preferBigCores`) | ON | Pins renderer / Choreographer / Codec / CCodec / CodecLooper / Binder threads to the A73 cluster. |
-| **Snappy input** (`snappyInput`) | ON (default) | Routes gamepad events off the main thread; cuts ~1–3 ms of input lag. |
-| **Ultra-low-latency** (`enableUltraLowLatency`) | **OFF** | Only affects the legacy `omx.mtk` path. On Pentonic / `c2.mtk.*` it's a no-op now that the BSP-correct preset is in place. |
-| **Immediate frame delivery** (`immediateFrameDelivery`) | **OFF** on a TV | Forces 0 µs dequeue + URGENT priority. Saves ~2 ms but can cause occasional drops/tearing. The 500 µs WARP timeout is plenty. |
-| **GL upscaler** (`videoUpscaleEnable`, `gpuPathMode`) | **OFF** | 4K source on a 4K panel — the GL upscaler is a render+copy pass with no benefit. |
+The first six rows are **now the app's defaults** — fresh installs and clean
+preferences pick them up automatically. Existing installs keep whatever the
+user previously configured (Android does not retroactively rewrite shared
+preferences when a default value changes in XML).
+
+| Setting (preference) | Value | Default? | Why |
+|---|---|---|---|
+| **Frame pacing** (`framePacing`) | `warp` | **Default** | Tightest output gating; NanoPacer's spin/park delivers frames within 2–100 µs of the display deadline. |
+| **Fast vsync** (`fastVsync`) | ON | **Default** | Activates NanoPacer. Has no effect outside WARP / WARP2 / MIN_LATENCY / GPU_RAW pacing. |
+| **CPU boost** (`pref_cpu_warmup_boost`) | **MEDIUM** | **Default** | Pre-scales DVFS so frame-1 and burst-decode are stable. Has a thermal gate built in. Master switch (`pref_cpu_warmup_enable`) also defaults ON. |
+| **CPU boost core set** (`pref_cpu_warmup_core_set`) | **big** | **Default** | A73 cluster only — lower thermal load than `all`. |
+| **Prevent packet loss** (`preventPacketLoss`) | ON | **Default** | Tiny FEC/jitter guard on the receive path. Effectively free at <1 ms RTT. |
+| **Snappy input** (`snappyInput`) | ON | **Default** | Routes gamepad events off the main thread; cuts ~1–3 ms of input lag. |
+| **Async decoder** (`asyncDecodeEnabled`) | ON | **Default** | MediaCodec async-callback mode. Eliminates `dequeueInputBuffer`/`dequeueOutputBuffer` polling latency. |
+| **Ultra-low-latency** (`enableUltraLowLatency`) | **OFF** | Default | Only affects the legacy `omx.mtk` path. On Pentonic / `c2.mtk.*` it's a no-op now that the BSP-correct preset is in place. |
+| **Immediate frame delivery** (`immediateFrameDelivery`) | **OFF** | Default | Forces 0 µs dequeue + URGENT priority on a TV. Saves ~2 ms but can cause occasional drops/tearing. The 500 µs WARP timeout is plenty. |
+| **GL upscaler** (`videoUpscaleEnable`, `gpuPathMode`) | **OFF** | Default | 4K source on a 4K panel — the GL upscaler is a render+copy pass with no benefit. |
 
 ### Code-level changes (proposed)
 
@@ -73,11 +78,11 @@ These improve image quality at zero or negligible latency cost.
 
 ### App settings
 
-| Setting (preference) | Value | Why |
-|---|---|---|
-| **HDR** (`enableHdr`) | ON (and Sunshine HDR ON, TV in HDR mode) | The existing pipeline plumbs HDR static info via the CTA-861.3 InfoFrame (`MediaCodecDecoderRenderer.configureAndStartDecoder`); the activity calls `setColorMode(COLOR_MODE_HDR)` (`Game.updateHdrWindowMode`); the codec advertises `HEVCProfileMain10HDR10` and `HDR10Plus`. Just turn it on. |
-| **Full-range RGB** (`fullRange`) | match Sunshine | Mismatch produces washed-out blacks (full→limited) or crushed whites (limited→full). |
-| **Format** (`videoFormat`) | **Force HEVC** | AV1 caps at 40 Mbps on this codec spec, well below the 95 Mbps stream. Forcing HEVC prevents accidental AV1 selection on 10-bit streams. |
+| Setting (preference) | Value | Default? | Why |
+|---|---|---|---|
+| **HDR** (`enableHdr`) | ON | **Default** | The existing pipeline plumbs HDR static info via the CTA-861.3 InfoFrame (`MediaCodecDecoderRenderer.configureAndStartDecoder`); the activity calls `setColorMode(COLOR_MODE_HDR)` (`Game.updateHdrWindowMode`); the codec advertises `HEVCProfileMain10HDR10` and `HDR10Plus`. The runtime checks `Display.HdrCapabilities` and falls back to SDR (with a Toast) on HDR-incapable displays, so default-ON is safe. |
+| **Full-range RGB** (`fullRange`) | ON | **Default** | Configure Sunshine to match (encode full-range YUV). Mismatch produces washed-out blacks (full→limited) or crushed whites (limited→full). |
+| **Format** (`videoFormat`) | **Force HEVC** | **Default** | AV1 caps at 40 Mbps on this codec spec, well below a 95 Mbps stream. Forcing HEVC prevents accidental AV1 selection on 10-bit streams. Devices without an HEVC decoder will fall through; this build targets HEVC-capable TV-class hardware. |
 
 ### TV menu (TCL on Pentonic)
 
