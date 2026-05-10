@@ -1,0 +1,140 @@
+name: Build & release APK
+
+on:
+  push:
+    branches:
+      - Artemide_Experimental_Async
+  workflow_dispatch:
+    inputs:
+      mark_prerelease:
+        description: 'Mark this release as a pre-release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-36 platform-tools build-tools;34.0.0 ndk;27.0.12077973'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      # Persist the debug keystore so APK signature is stable across CI runs
+      # (otherwise upgrades-in-place fail because each run would generate a fresh keystore).
+      - name: Cache debug keystore
+        id: keystore-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-v1
+
+      - name: Generate debug keystore on first run
+        if: steps.keystore-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Compute version + tag
+        id: version
+        run: |
+          VERSION_NAME=$(grep -E 'versionName "' app/build.gradle | head -1 | sed -E 's/.*versionName "(.*)".*/\1/')
+          VERSION_CODE=$(grep -E 'versionCode = ' app/build.gradle | head -1 | sed -E 's/.*versionCode = ([0-9]+).*/\1/')
+          SHORT_SHA=${GITHUB_SHA::7}
+          BRANCH_SAFE="${GITHUB_REF_NAME//\//-}"
+          BUILD_NUM="${{ github.run_number }}"
+          TAG="ci-${BRANCH_SAFE}-${VERSION_NAME}-${BUILD_NUM}-${SHORT_SHA}"
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "branch=${BRANCH_SAFE}" >> "$GITHUB_OUTPUT"
+          echo "build_num=${BUILD_NUM}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "## Build info" >> "$GITHUB_STEP_SUMMARY"
+          echo "- versionName: ${VERSION_NAME}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- versionCode: ${VERSION_CODE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- branch: ${BRANCH_SAFE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- commit: ${SHORT_SHA}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- tag: ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build perf APK (NonRoot_game / arm64+armv7+x86+x86_64)
+        run: ./gradlew :app:assembleNonRoot_gamePerf --no-daemon --stacktrace
+
+      - name: Collect APKs
+        id: collect
+        run: |
+          mkdir -p artifacts
+          # Per-ABI splits land under app/build/outputs/apk/<flavor>/<buildType>/
+          find app/build/outputs/apk -name '*.apk' -print
+          for src in app/build/outputs/apk/nonRoot_game/perf/*.apk; do
+            base=$(basename "$src" .apk)
+            dst="artifacts/${base}-${{ steps.version.outputs.short_sha }}.apk"
+            cp "$src" "$dst"
+            echo "  -> $dst"
+          done
+          ls -l artifacts/
+          echo "found=$(ls artifacts/ | wc -l | tr -d ' ')" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APKs as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artemide-perf-apks-${{ steps.version.outputs.short_sha }}
+          path: artifacts/*.apk
+          if-no-files-found: error
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "Artemide ${{ steps.version.outputs.version_name }} (${{ steps.version.outputs.branch }} #${{ steps.version.outputs.build_num }})"
+          body: |
+            **Auto-build from `${{ github.ref_name }}` @ `${{ steps.version.outputs.short_sha }}`**
+
+            - versionName: `${{ steps.version.outputs.version_name }}`
+            - versionCode: `${{ steps.version.outputs.version_code }}`
+            - flavor / buildType: `nonRoot_game / perf` (debug-signed)
+            - APKs: split by ABI (arm64-v8a, armeabi-v7a, x86, x86_64) — install the one matching your device
+            - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Note: signed with the runner's persistent debug keystore. To upgrade in place across builds you must keep installing CI builds (do not mix with locally-built debug APKs that use a different keystore).
+          prerelease: ${{ github.event_name != 'workflow_dispatch' || inputs.mark_prerelease }}
+          files: artifacts/*.apk
+          fail_on_unmatched_files: true
