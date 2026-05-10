@@ -83,6 +83,11 @@ These improve image quality at zero or negligible latency cost.
 | **HDR** (`enableHdr`) | ON | **Default** | The existing pipeline plumbs HDR static info via the CTA-861.3 InfoFrame (`MediaCodecDecoderRenderer.configureAndStartDecoder`); the activity calls `setColorMode(COLOR_MODE_HDR)` (`Game.updateHdrWindowMode`); the codec advertises `HEVCProfileMain10HDR10` and `HDR10Plus`. The runtime checks `Display.HdrCapabilities` and falls back to SDR (with a Toast) on HDR-incapable displays, so default-ON is safe. |
 | **Full-range RGB** (`fullRange`) | ON | **Default** | Configure Sunshine to match (encode full-range YUV). Mismatch produces washed-out blacks (full→limited) or crushed whites (limited→full). |
 | **Format** (`videoFormat`) | **Force HEVC** | **Default** | AV1 caps at 40 Mbps on this codec spec, well below a 95 Mbps stream. Forcing HEVC prevents accidental AV1 selection on 10-bit streams. Devices without an HEVC decoder will fall through; this build targets HEVC-capable TV-class hardware. |
+| **Resolution** (`list_resolution`) | **3840×2160** | **Default** | This is a TV-class build; assume a 4K panel. |
+| **FPS** (`list_fps`) | 60 | Default | (already the upstream default) |
+| **Bitrate** (`seekbar_bitrate_kbps`) | auto-computed (~80 Mbps for 4K60) | Default | Computed via the Shield-derived curve in `getDefaultBitrate()`. You can bump to 95 Mbps manually — the codec's bitrate ceiling is 100 Mbps. |
+| **Enforce display mode** (`enforceDisplayMode`) | ON | **Default** | Forces the TV to switch to a display mode that matches the stream resolution / refresh rate (e.g. 4K60), instead of letting the OS pick the closest. Eliminates a class of refresh-rate-mismatch jitter on Android TV. |
+| **Audio config** (`list_audio_config`) | 5.1 surround | **Default** | TVs with built-in speakers downmix gracefully if no AVR is present; AVR setups get full surround. Stereo can still be selected manually. |
 
 ### TV menu (TCL on Pentonic)
 

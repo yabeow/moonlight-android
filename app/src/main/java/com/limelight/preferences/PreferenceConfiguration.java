@@ -194,10 +194,10 @@ public class PreferenceConfiguration {
 
     private static final String CHECKBOX_ENABLE_COMMIT_TEXT = "checkbox_enable_commit_text";
 
-    static final String DEFAULT_RESOLUTION = "1280x720";
+    static final String DEFAULT_RESOLUTION = "3840x2160";
     static final String DEFAULT_FPS = "60";
     private static final boolean DEFAULT_ENABLE_ULTRA_LOW_LATENCY = false;
-    private static final boolean DEFAULT_ENFORCE_DISPLAY_MODE = false;
+    private static final boolean DEFAULT_ENFORCE_DISPLAY_MODE = true;
     private static final boolean DEFAULT_USE_VIRTUAL_DISPLAY = false;
     private static final String DEFAULT_VIDEO_SCALE_MODE = "fit";
     private static final boolean DEFAULT_AUTO_INVERT_VIDEO_RESOLUTION = true;
@@ -234,7 +234,7 @@ public class PreferenceConfiguration {
     private static final int DEFAULT_VIBRATE_FALLBACK_STRENGTH = 100;
     private static final boolean DEFAULT_FLIP_FACE_BUTTONS = false;
     private static final boolean DEFAULT_TOUCHSCREEN_TRACKPAD = true;
-    private static final String DEFAULT_AUDIO_CONFIG = "2"; // Stereo
+    private static final String DEFAULT_AUDIO_CONFIG = "51"; // 5.1 surround (TV-class default)
     private static final boolean DEFAULT_LATENCY_TOAST = false;
     private static final String DEFAULT_FRAME_PACING = "warp";
     private static final boolean DEFAULT_ABSOLUTE_MOUSE_MODE = false;
