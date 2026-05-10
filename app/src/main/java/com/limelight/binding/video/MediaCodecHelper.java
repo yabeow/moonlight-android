@@ -556,6 +556,17 @@ public class MediaCodecHelper {
         if (tryNumber < 1) {
             // Official Android 11+ low latency option (KEY_LOW_LATENCY).
             videoFormat.setInteger("low-latency", 1);
+
+            // Standard cross-vendor low-latency hints (Android R / API 30+).
+            // KEY_LOW_LATENCY=1 is supposed to imply both, but several BSPs honor only the
+            // explicit ones; setting all three is belt-and-suspenders and free.
+            //   "latency"             -> MediaFormat.KEY_LATENCY (max frames of latency)
+            //   "output-reorder-depth"-> MediaFormat.KEY_OUTPUT_REORDER_DEPTH (max reorder)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                safeSet(videoFormat, "latency", 0);
+                safeSet(videoFormat, "output-reorder-depth", 0);
+            }
+
             setNewOption = true;
 
             // If this decoder officially supports FEATURE_LowLatency, we will just use that alone

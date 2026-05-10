@@ -3994,10 +3994,22 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Apply (or re-apply) frame-rate hint to the actual present Surface
         applySurfaceFrameRateHintIfPossible();
+
+        // Ask the SoC governor to keep sustained clocks while the stream is on screen.
+        // This avoids the DVFS-driven dips between frames that show up as decode-latency
+        // jitter on TV-class hardware. No-op pre-API 24.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try { getWindow().setSustainedPerformanceMode(true); } catch (Throwable ignored) {}
+        }
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
+        // Release the sustained-performance hint as soon as the surface goes away.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try { getWindow().setSustainedPerformanceMode(false); } catch (Throwable ignored) {}
+        }
+
         if (!surfaceCreated) {
             throw new IllegalStateException("Surface destroyed before creation!");
         }
