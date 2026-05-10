@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - Artemide_Experimental_Async
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'LICENSE*'
+      - '.gitignore'
   workflow_dispatch:
     inputs:
       mark_prerelease:
