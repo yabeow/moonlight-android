@@ -224,6 +224,10 @@ public class MediaCodecHelper {
         knownVendorLowLatencyOptions.add("vendor.hisi-ext-low-latency-video-dec.video-scene-for-low-latency-req");
         knownVendorLowLatencyOptions.add("vendor.rtc-ext-dec-low-latency.enable");
         knownVendorLowLatencyOptions.add("vendor.low-latency.enable");
+        // MTK Codec2 (Pentonic / TV-class media stack) low-latency advertisement keys
+        knownVendorLowLatencyOptions.add("vendor.START.low-latency.enable");
+        knownVendorLowLatencyOptions.add("vendor.mtk-codec2.low-latency-mode");
+        knownVendorLowLatencyOptions.add("vendor.mtk-codec2.game-mode");
     }
 
     static {
@@ -638,8 +642,66 @@ public class MediaCodecHelper {
 //                    videoFormat.setInteger("vendor.mtk.vdec.bq.guard.interval.time.value", 2);
 //                    videoFormat.setInteger("vendor.mtk.vdec.buffer.fetch.timeout.ms.value", 2);
             else if (isDecoderInList(mtkDecoderPrefixes, decoderInfo.getName())) {
-                if (tryNumber < 4) {
-                    // --- PRESET: MTK Low-Latency (tiered) ---
+                final boolean isCodec2Mtk = decoderInfo.getName()
+                        .toLowerCase(java.util.Locale.US).startsWith("c2.mtk");
+
+                if (tryNumber < 4 && isCodec2Mtk) {
+                    // --- PRESET: MTK Codec2 (Pentonic / TV media stack) Low-Latency ---
+                    // Vendor namespace on these BSPs is vendor.mtk-codec2.* / vendor.mtk-pq.*
+                    // / vendor.mtk-aivision.* / vendor.mtk-camera.* / vendor.mtk-watermark.*
+                    // / vendor.mtk-iview.*. Legacy vendor.mtk.vdec.* keys do not exist here.
+                    //
+                    // tryNumber 0: full preset (best latency)
+                    // tryNumber 1: drop optional PQ/AI keys, keep latency path
+                    // tryNumber 2-3: fall back to framework low-latency only
+
+                    // Resolve target FPS from MediaFormat (createBaseMediaFormat sets KEY_FRAME_RATE)
+                    int __mtkFps = 60;
+                    try {
+                        if (videoFormat.containsKey(MediaFormat.KEY_FRAME_RATE)) {
+                            __mtkFps = videoFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
+                        }
+                    } catch (Throwable ignored) {}
+                    if (__mtkFps <= 0) __mtkFps = 60;
+
+                    // Tier 1: low-latency / game path (single biggest win on TV stacks)
+                    safeSet(videoFormat, "vendor.START.low-latency.enable", 1);
+                    safeSet(videoFormat, "vendor.mtk-codec2.low-latency-mode", 1);
+                    safeSet(videoFormat, "vendor.mtk-codec2.game-mode", 1);
+                    safeSet(videoFormat, "vendor.mtk-codec2.non-tunnel-render-latency", 0);
+                    safeSet(videoFormat, "vendor.mtk-iview.force-real-time", 1);
+
+                    if (tryNumber < 2) {
+                        // Tier 2: disable post-decode picture-quality / AI / watermark pipeline
+                        safeSet(videoFormat, "vendor.mtk-pq.pqsetting", 0);
+                        safeSet(videoFormat, "vendor.mtk-pq.restriction", 1);
+                        safeSet(videoFormat, "vendor.mtk-camera.enable-pq", 0);
+                        safeSet(videoFormat, "vendor.mtk-camera.ai-sr", 0);
+                        safeSet(videoFormat, "vendor.mtk-aivision.vb-enable", 0);
+                        safeSet(videoFormat, "vendor.mtk-aivision.dptz-enable", 0);
+                        safeSet(videoFormat, "vendor.mtk-watermark.enable", 0);
+                        safeSet(videoFormat, "vendor.mtk-watermark.activate", 0);
+                        safeSet(videoFormat, "vendor.mtk-codec2.is-filmmaker", 0);
+
+                        // Tier 3: pin output frame rate, never drop on the codec side, no overscan
+                        safeSet(videoFormat, "vendor.mtk-codec2.force-frame-rate", __mtkFps);
+                        safeSet(videoFormat, "vendor.mtk-codec2.frame-rate", __mtkFps);
+                        safeSet(videoFormat, "vendor.mtk-codec2.max-frame-rate", __mtkFps);
+                        safeSet(videoFormat, "vendor.mtk-codec2.frame-drop-treshold", 0);
+                        safeSet(videoFormat, "vendor.mtk-codec2.over-scan", 0);
+                        safeSet(videoFormat, "vendor.mtk-codec2.overscan-appropriate-flag", 0);
+                        safeSet(videoFormat, "vendor.mtk-codec2.overscan-present-flag", 0);
+                    }
+
+                    // Generic ACodec hint (harmless if BSP ignores it)
+                    safeSet(videoFormat, "vdec-lowlatency", 1);
+
+                    // Standard Android hints
+                    safeSet(videoFormat, MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE);
+                    safeSet(videoFormat, MediaFormat.KEY_PRIORITY, 0);
+                }
+                else if (tryNumber < 4) {
+                    // --- PRESET: legacy omx.mtk Low-Latency (tiered, kept as-is) ---
                     // tryNumber 0: stable baseline
                     // tryNumber 1: reduced buffering (lower e2e)
                     // tryNumber 2: ultra-low-latency (only if enableUltraLowLatency)
