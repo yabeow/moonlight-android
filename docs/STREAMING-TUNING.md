@@ -15,8 +15,8 @@ defaults: either uninstall + reinstall, or flip the values manually in Settings.
 | Resolution / FPS | 3840×2160 / 60 | ✅ |
 | Bitrate | auto (~80 Mbps for 4K60); raise to 95 manually if you like | computed |
 | Format | `forceh265` | ✅ |
-| Frame pacing | `warp` | ✅ |
-| Fast vsync | ON | ✅ |
+| Frame pacing | `latency` (low-latency preset) | ✅ |
+| Fast vsync | ON (activates NanoPacer in MIN_LATENCY too) | ✅ |
 | CPU boost | profile `medium`, core set `big` | ✅ |
 | Prevent packet loss | ON | ✅ |
 | Snappy input | ON | ✅ |

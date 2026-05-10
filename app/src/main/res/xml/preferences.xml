@@ -51,7 +51,7 @@
             seekbar:step="500" />
 
         <ListPreference
-            android:defaultValue="warp"
+            android:defaultValue="latency"
             android:entries="@array/video_frame_pacing_names"
             android:entryValues="@array/video_frame_pacing_values"
             android:key="frame_pacing"
